@@ -39,6 +39,7 @@ class SocialAuthenticate extends BaseAuthenticate
 {
 
     use EventDispatcherTrait;
+    use LogTrait;
 
     /**
      * Instance of OAuth2 provider.
@@ -188,6 +189,11 @@ class SocialAuthenticate extends BaseAuthenticate
 
             return compact('token') + $provider->getResourceOwner($token)->toArray();
         } catch (\Exception $e) {
+            $message = sprintf(
+                "Error getting an access token / retrieving the authorized user's profile data. Error message: %s";
+                $e->getMessage()
+            );
+            $this->log($message);
             return false;
         }
     }
