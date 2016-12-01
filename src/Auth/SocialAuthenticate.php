@@ -27,6 +27,7 @@ use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\Event\EventDispatcherTrait;
 use Cake\Event\EventManager;
+use Cake\Log\LogTrait;
 use Cake\Network\Request;
 use Cake\Network\Response;
 use Cake\ORM\TableRegistry;
@@ -190,8 +191,9 @@ class SocialAuthenticate extends BaseAuthenticate
             return compact('token') + $provider->getResourceOwner($token)->toArray();
         } catch (\Exception $e) {
             $message = sprintf(
-                "Error getting an access token / retrieving the authorized user's profile data. Error message: %s";
-                $e->getMessage()
+                "Error getting an access token / retrieving the authorized user's profile data. Error message: %s %s",
+                $e->getMessage(),
+                $e
             );
             $this->log($message);
             return false;
