@@ -22,7 +22,7 @@ The **Users** plugin is back!
 
 It covers the following features:
 * User registration
-* Login/logout
+* Login/logout (Middleware)
 * Social login (Facebook, Twitter, Instagram, Google, Linkedin, etc)
 * Simple RBAC via https://github.com/CakeDC/auth
 * Remember me (Cookie) via https://github.com/CakeDC/auth
