@@ -127,11 +127,13 @@ $config = [
     ],
     // default configuration used to auto-load the Auth Component, override to change the way Auth works
     'Auth' => [
-        'loginAction' => [
-            'plugin' => 'CakeDC/Users',
-            'controller' => 'Users',
-            'action' => 'login',
-            'prefix' => false
+        'AuthenticationComponent' => [
+            'logoutRedirect' => [
+                'plugin' => 'CakeDC/Users',
+                'controller' => 'Users',
+                'action' => 'login',
+                'prefix' => false
+            ]
         ],
         'authenticate' => [
             'all' => [
@@ -140,6 +142,15 @@ $config = [
             'CakeDC/Auth.ApiKey',
             'CakeDC/Auth.RememberMe',
             'Form',
+        ],
+        'Authenticators' => [
+            'Authentication.Session',
+            'Authentication.Form' => [
+                'loginUrl' => '/login'
+            ],
+        ],
+        'Identifiers' => [
+            'Authentication.Password',
         ],
         'authorize' => [
             'CakeDC/Auth.Superuser',
