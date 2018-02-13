@@ -166,6 +166,11 @@ trait LoginTrait
         if ($result->isValid()) {
             return $this->redirect('/');
         }
+
+        if ($this->request->is('post')) {
+            $message = __d('CakeDC/Users', 'Username or password is incorrect');
+            $this->Flash->error($message, 'default', [], 'auth');
+        }
     }
 
     /**
