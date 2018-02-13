@@ -46,9 +46,6 @@ class BaseApplication extends CakeBaseApplication
             $service->loadAuthenticator($authenticator, $options);
         }
 
-        // Load identifiers
-        $service->loadIdentifier('Authentication.Password', compact('fields'));
-
         return $service;
     }
 
