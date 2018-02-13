@@ -57,7 +57,6 @@ class BaseApplication extends CakeBaseApplication
      */
     public function middleware($middlewareQueue)
     {
-        Log::error(__METHOD__);
         $middlewareQueue
             // Catch any exceptions in the lower layers,
             // and make an error page/response
@@ -71,7 +70,7 @@ class BaseApplication extends CakeBaseApplication
 
         $authentication = new AuthenticationMiddleware($this);
         $middlewareQueue->add($authentication);
-        Log::error($middlewareQueue);
+
         return $middlewareQueue;
     }
 }
