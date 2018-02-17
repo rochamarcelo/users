@@ -164,6 +164,7 @@ trait LoginTrait
     {
         $result = $this->request->getAttribute('authentication')->getResult();
         if ($result->isValid()) {
+            $this->Auth->setUser((array)$this->request->getAttribute('identity')->getOriginalData());
             return $this->redirect('/');
         }
 
@@ -328,6 +329,9 @@ trait LoginTrait
      */
     public function logout()
     {
+        $this->loadComponent('Authentication.Authentication', [
+            'logoutRedirect' => '/'
+        ]);
         $user = (array)$this->Auth->user();
 
         $eventBefore = $this->dispatchEvent(UsersAuthComponent::EVENT_BEFORE_LOGOUT, ['user' => $user]);
@@ -343,7 +347,7 @@ trait LoginTrait
             return $this->redirect($eventAfter->result);
         }
 
-        return $this->redirect($this->Auth->logout());
+        return $this->redirect($this->Authentication->logout());
     }
 
     /**
