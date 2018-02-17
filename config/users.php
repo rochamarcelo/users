@@ -147,7 +147,8 @@ $config = [
                     'httpOnly' => true,
                 ],
                 'loginUrl' => '/login'
-            ]
+            ],
+            CakeDC\Users\Authenticator\SocialAuthenticator::class
         ],
         'Identifiers' => [
             'Authentication.Password',
