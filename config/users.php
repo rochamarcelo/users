@@ -147,8 +147,7 @@ $config = [
                     'httpOnly' => true,
                 ],
                 'loginUrl' => '/login'
-            ],
-            CakeDC\Users\Authenticator\SocialAuthenticator::class
+            ]
         ],
         'Identifiers' => [
             'Authentication.Password',
@@ -156,6 +155,11 @@ $config = [
                 'tokenField' => 'api_token'
             ]
         ],
+    ],
+    'SocialAuthMiddleware' => [
+        'usernameField' => 'username',
+        'finder' => 'all',
+        'sessionAuthKey' => 'Auth.User'
     ],
     'OAuth' => [
         'path' => ['plugin' => 'CakeDC/Users', 'controller' => 'Users', 'action' => 'socialLogin', 'prefix' => null],

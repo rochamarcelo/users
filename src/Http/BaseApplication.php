@@ -9,6 +9,7 @@ use Cake\Http\BaseApplication as CakeBaseApplication;
 use Cake\Log\Log;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
+use CakeDC\Users\Middleware\SocialAuthMiddleware;
 
 /**
  * Application setup class.
@@ -66,7 +67,10 @@ class BaseApplication extends CakeBaseApplication
             ->add(AssetMiddleware::class)
 
             // Add routing middleware.
-            ->add(new RoutingMiddleware($this));
+            ->add(new RoutingMiddleware($this))
+
+            ->add(new SocialAuthMiddleware());
+
 
         $authentication = new AuthenticationMiddleware($this);
         $middlewareQueue->add($authentication);

@@ -31,7 +31,7 @@ if (Configure::check('Users.auth')) {
 
 if (Configure::read('Users.Social.login') && php_sapi_name() != 'cli') {
     try {
-        EventManager::instance()->on(\CakeDC\Users\Controller\Component\UsersAuthComponent::EVENT_FAILED_SOCIAL_LOGIN, [new \CakeDC\Users\Controller\UsersController(), 'failedSocialLoginListener']);
+        EventManager::instance()->on(\CakeDC\Users\Listener\AuthListener::EVENT_FAILED_SOCIAL_LOGIN, [new \CakeDC\Users\Controller\UsersController(), 'failedSocialLoginListener']);
     } catch (MissingPluginException $e) {
         Log::error($e->getMessage());
     }
