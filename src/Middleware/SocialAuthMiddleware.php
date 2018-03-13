@@ -411,7 +411,6 @@ class SocialAuthMiddleware
     protected function _touch(array $data)
     {
         try {
-            throw new MissingEmailException('Plsea sd');
             if (empty($data['provider']) && !empty($this->_provider)) {
                 $data['provider'] = SocialUtils::getProvider($this->_provider);
             }
