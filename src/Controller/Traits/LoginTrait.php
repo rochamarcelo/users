@@ -15,6 +15,7 @@ use CakeDC\Users\Controller\Component\UsersAuthComponent;
 use CakeDC\Users\Exception\AccountNotActiveException;
 use CakeDC\Users\Exception\MissingEmailException;
 use CakeDC\Users\Exception\UserNotActiveException;
+use CakeDC\Users\Middleware\SocialAuthMiddleware;
 use CakeDC\Users\Model\Table\SocialAccountsTable;
 use Cake\Core\Configure;
 use Cake\Core\Exception\Exception;
@@ -49,32 +50,7 @@ trait LoginTrait
         $oauthToken = $this->request->getQuery('oauth_token');
         $oauthVerifier = $this->request->getQuery('oauth_verifier');
         if (!empty($oauthToken) && !empty($oauthVerifier)) {
-            $temporaryCredentials = $this->request->getSession()->read('temporary_credentials');
-            $tokenCredentials = $server->getTokenCredentials($temporaryCredentials, $oauthToken, $oauthVerifier);
-            $user = (array)$server->getUserDetails($tokenCredentials);
-            $user['token'] = [
-                'accessToken' => $tokenCredentials->getIdentifier(),
-                'tokenSecret' => $tokenCredentials->getSecret(),
-            ];
-            $this->request->getSession()->write(Configure::read('Users.Key.Session.social'), $user);
-            try {
-                $user = $this->Auth->identify();
-                $this->_afterIdentifyUser($user, true);
-            } catch (UserNotActiveException $ex) {
-                $exception = $ex;
-            } catch (AccountNotActiveException $ex) {
-                $exception = $ex;
-            } catch (MissingEmailException $ex) {
-                $exception = $ex;
-            }
 
-            if (!empty($exception)) {
-                return $this->failedSocialLogin(
-                    $exception,
-                    $this->request->getSession()->read(Configure::read('Users.Key.Session.social')),
-                    true
-                );
-            }
         } else {
             $temporaryCredentials = $server->getTemporaryCredentials();
             $this->request->getSession()->write('temporary_credentials', $temporaryCredentials);
@@ -85,26 +61,17 @@ trait LoginTrait
     }
 
     /**
-     * @param Event $event event
-     * @return mixed
-     */
-    public function failedSocialLoginListener(Event $event)
-    {
-        return $this->failedSocialLogin($event->data['exception'], $event->data['rawData'], true);
-    }
-
-    /**
-     * @param mixed $exception exception
+     * @param int $error auth error
      * @param mixed $data data
      * @param bool|false $flash flash
      * @return mixed
      */
-    public function failedSocialLogin($exception, $data, $flash = false)
+    public function failedSocialLogin($error, $data, $flash = false)
     {
         $msg = __d('CakeDC/Users', 'Issues trying to log in with your social account');
 
-        if (isset($exception)) {
-            if ($exception instanceof MissingEmailException) {
+        switch ($error) {
+            case SocialAuthMiddleware::AUTH_ERROR_MISSING_EMAIL:
                 if ($flash) {
                     $this->Flash->success(__d('CakeDC/Users', 'Please enter your email'), ['clear' => true]);
                 }
@@ -115,19 +82,21 @@ trait LoginTrait
                     'controller' => 'Users',
                     'action' => 'socialEmail'
                 ]);
-            }
-            if ($exception instanceof UserNotActiveException) {
+            case SocialAuthMiddleware::AUTH_ERROR_USER_NOT_ACTIVE:
                 $msg = __d(
                     'CakeDC/Users',
                     'Your user has not been validated yet. Please check your inbox for instructions'
                 );
-            } elseif ($exception instanceof AccountNotActiveException) {
+                break;
+            case SocialAuthMiddleware::AUTH_ERROR_ACCOUNT_NOT_ACTIVE:
                 $msg = __d(
                     'CakeDC/Users',
                     'Your social account has not been validated yet. Please check your inbox for instructions'
                 );
-            }
+                break;
+
         }
+
         if ($flash) {
             $this->request->getSession()->delete(Configure::read('Users.Key.Session.social'));
             $this->Flash->success($msg, ['clear' => true]);
@@ -140,19 +109,24 @@ trait LoginTrait
      * Social login
      *
      * @throws NotFoundException
-     * @return array
+     * @return mixed
      */
     public function socialLogin()
     {
-        $socialProvider = $this->request->getParam('provider');
-        $socialUser = $this->request->getSession()->read(Configure::read('Users.Key.Session.social'));
+        $status = $this->request->getAttribute('socialAuthStatus');
+        if ($status === SocialAuthMiddleware::AUTH_SUCCESS) {
+            $user = $this->Auth->user();
 
-        if (empty($socialProvider) && empty($socialUser)) {
+            return $this->_afterIdentifyUser($user, true);
+        }
+        $socialProvider = $this->request->getParam('provider');
+
+        if (empty($socialProvider)) {
             throw new NotFoundException();
         }
-        $user = $this->Auth->user();
 
-        return $this->_afterIdentifyUser($user, true);
+        $data = $this->request->getAttribute('socialRawData');
+        return $this->failedSocialLogin($status, $data);
     }
 
     /**

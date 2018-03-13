@@ -1,32 +1,19 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: rochamarcelo
- * Date: 10/02/18
- * Time: 08:35
- */
 
 namespace CakeDC\Users\Middleware;
 
-
 use Cake\Core\InstanceConfigTrait;
-use Cake\Log\Log;
-use Cake\Network\Exception\NotFoundException;
 use CakeDC\Users\Auth\Exception\InvalidProviderException;
 use CakeDC\Users\Auth\Exception\InvalidSettingsException;
 use CakeDC\Users\Auth\Exception\MissingProviderConfigurationException;
 use CakeDC\Users\Auth\Social\Util\SocialUtils;
-use CakeDC\Users\Controller\Component\UsersAuthComponent;
 use CakeDC\Users\Exception\AccountNotActiveException;
 use CakeDC\Users\Exception\MissingEmailException;
 use CakeDC\Users\Exception\MissingProviderException;
 use CakeDC\Users\Exception\UserNotActiveException;
 use CakeDC\Users\Listener\AuthListener;
 use CakeDC\Users\Model\Table\SocialAccountsTable;
-use Cake\Auth\BaseAuthenticate;
-use Cake\Controller\ComponentRegistry;
 use Cake\Core\Configure;
-use Cake\Event\Event;
 use Cake\Event\EventDispatcherTrait;
 use Cake\Http\Response;
 use Cake\Http\ServerRequest;
@@ -35,7 +22,6 @@ use Cake\ORM\TableRegistry;
 use Cake\Utility\Hash;
 use League\OAuth2\Client\Provider\AbstractProvider;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 
 class SocialAuthMiddleware
 {
@@ -43,9 +29,13 @@ class SocialAuthMiddleware
     use EventDispatcherTrait;
     use LogTrait;
 
+    const AUTH_ERROR_MISSING_EMAIL = 10;
+    const AUTH_ERROR_ACCOUNT_NOT_ACTIVE = 20;
+    const AUTH_ERROR_USER_NOT_ACTIVE = 30;
+    const AUTH_SUCCESS = 100;
     protected $_defaultConfig = [];
-
-    protected $authError = [];
+    protected $authStatus = 0;
+    protected $rawData = [];
 
     /**
      * Serve assets if the path matches one.
@@ -73,15 +63,17 @@ class SocialAuthMiddleware
         }
 
         $result = $this->authenticate($request);
-
         if ($result) {
+            $this->authStatus = self::AUTH_SUCCESS;
             $request->getSession()->write(
                 $this->getConfig('sessionAuthKey'),
                 $result
             );
         }
 
-        return $response->withLocation('/');
+        $request = $request->withAttribute('socialAuthStatus', $this->authStatus);
+        $request = $request->withAttribute('socialRawData', $this->rawData);
+        return $next($request, $response);
     }
 
     /**
@@ -92,7 +84,7 @@ class SocialAuthMiddleware
      * @return bool
      * @throws \RuntimeException If the `CakeDC/Users/OAuth2.newUser` event is missing or returns empty.
      */
-    public function authenticate(ServerRequest $request, $response)
+    public function authenticate(ServerRequest $request)
     {
         $data = $request->getSession()->read(Configure::read('Users.Key.Session.social'));
         $requestDataEmail = $request->getData('email');
@@ -125,7 +117,7 @@ class SocialAuthMiddleware
         if (!$user || !$this->getConfig('userModel')) {
             return false;
         }
-
+        $this->rawData = $user;
         if (!$result = $this->_touch($user)) {
             return false;
         }
@@ -419,22 +411,25 @@ class SocialAuthMiddleware
     protected function _touch(array $data)
     {
         try {
+            throw new MissingEmailException('Plsea sd');
             if (empty($data['provider']) && !empty($this->_provider)) {
                 $data['provider'] = SocialUtils::getProvider($this->_provider);
             }
             $user = $this->_socialLogin($data);
         } catch (UserNotActiveException $ex) {
+            $this->authStatus = self::AUTH_ERROR_USER_NOT_ACTIVE;
             $exception = $ex;
         } catch (AccountNotActiveException $ex) {
+            $this->authStatus = self::AUTH_ERROR_ACCOUNT_NOT_ACTIVE;
             $exception = $ex;
         } catch (MissingEmailException $ex) {
+            $this->authStatus = self::AUTH_ERROR_MISSING_EMAIL;
             $exception = $ex;
         }
 
         if (!empty($exception)) {
             $args = ['exception' => $exception, 'rawData' => $data];
             $this->dispatchEvent( AuthListener::EVENT_FAILED_SOCIAL_LOGIN, $args);
-
             return false;
         }
 
