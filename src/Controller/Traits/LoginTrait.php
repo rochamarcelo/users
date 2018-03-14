@@ -115,7 +115,7 @@ trait LoginTrait
     {
         $status = $this->request->getAttribute('socialAuthStatus');
         if ($status === SocialAuthMiddleware::AUTH_SUCCESS) {
-            $user = $this->Auth->user();
+            $user = $this->request->getAttribute('identity')->getOriginalData();
 
             return $this->_afterIdentifyUser($user, true);
         }
@@ -270,6 +270,7 @@ trait LoginTrait
     protected function _afterIdentifyUser($user, $socialLogin = false, $googleAuthenticatorLogin = false)
     {
         if (!empty($user)) {
+            $user = is_object($user) ? $user['User']->toArray() : $user;
             $this->Auth->setUser($user);
 
             if ($googleAuthenticatorLogin) {

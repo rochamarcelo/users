@@ -13,6 +13,7 @@ namespace CakeDC\Users\Controller\Traits;
 
 use Cake\Core\Configure;
 use Cake\Network\Exception\NotFoundException;
+use CakeDC\Users\Middleware\SocialAuthMiddleware;
 
 /**
  * Covers registration features and email token validation
@@ -29,20 +30,15 @@ trait SocialTrait
      */
     public function socialEmail()
     {
-        if (!$this->request->getSession()->check(Configure::read('Users.Key.Session.social'))) {
-            throw new NotFoundException();
-        }
-        $this->request->getSession()->delete('Flash.auth');
-
         if ($this->request->is('post')) {
-            $validPost = $this->_validateRegisterPost();
-            if (!$validPost) {
+            $status = $this->request->getAttribute('socialAuthStatus');
+            if ($status === SocialAuthMiddleware::AUTH_ERROR_INVALID_RECAPTCHA) {
                 $this->Flash->error(__d('CakeDC/Users', 'The reCaptcha could not be validated'));
 
                 return;
             }
-            $user = $this->Auth->identify();
 
+            $user = $this->request->getAttribute('identity')->getOriginalData();
             return $this->_afterIdentifyUser($user, true);
         }
     }

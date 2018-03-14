@@ -7,6 +7,7 @@ use CakeDC\Users\Auth\Exception\InvalidProviderException;
 use CakeDC\Users\Auth\Exception\InvalidSettingsException;
 use CakeDC\Users\Auth\Exception\MissingProviderConfigurationException;
 use CakeDC\Users\Auth\Social\Util\SocialUtils;
+use CakeDC\Users\Controller\Traits\ReCaptchaTrait;
 use CakeDC\Users\Exception\AccountNotActiveException;
 use CakeDC\Users\Exception\MissingEmailException;
 use CakeDC\Users\Exception\MissingProviderException;
@@ -25,13 +26,15 @@ use Psr\Http\Message\ResponseInterface;
 
 class SocialAuthMiddleware
 {
-    use InstanceConfigTrait;
     use EventDispatcherTrait;
+    use InstanceConfigTrait;
     use LogTrait;
+    use ReCaptchaTrait;
 
     const AUTH_ERROR_MISSING_EMAIL = 10;
     const AUTH_ERROR_ACCOUNT_NOT_ACTIVE = 20;
     const AUTH_ERROR_USER_NOT_ACTIVE = 30;
+    const AUTH_ERROR_INVALID_RECAPTCHA = 40;
     const AUTH_SUCCESS = 100;
     protected $_defaultConfig = [];
     protected $authStatus = 0;
@@ -47,14 +50,18 @@ class SocialAuthMiddleware
      */
     public function __invoke(ServerRequest $request, ResponseInterface $response, $next)
     {
-        if ($request->getParam('action') !== 'socialLogin') {
+        $action = $request->getParam('action');
+        if (!in_array($action, ['socialLogin', 'socialEmail'])) {
             return $next($request, $response);
         }
 
         $this->setConfig($this->initialConfig([]));
-        $provider = $this->provider($request);
+        if ($action == 'socialEmail') {
+            return $this->handleSocialEmailStep($request, $response, $next);
+        }
 
         if (empty($request->getQuery('code'))) {
+            $provider = $this->provider($request);
             if ($this->getConfig('options.state')) {
                 $request->getSession()->write('oauth2state', $provider->getState());
             }
@@ -62,7 +69,20 @@ class SocialAuthMiddleware
             return $response->withLocation($provider->getAuthorizationUrl());
         }
 
-        $result = $this->authenticate($request);
+        return $this->finishWithResult($this->authenticate($request), $request, $response, $next);
+    }
+
+    /**
+     * finish middleware process.
+     *
+     * @param int $result authentication result
+     * @param \Psr\Http\Message\ServerRequestInterface $request The request.
+     * @param \Psr\Http\Message\ResponseInterface $response The response.
+     * @param callable $next Callback to invoke the next middleware.
+     * @return \Psr\Http\Message\ResponseInterface A response
+     */
+    private function finishWithResult($result, ServerRequest $request, ResponseInterface $response, $next)
+    {
         if ($result) {
             $this->authStatus = self::AUTH_SUCCESS;
             $request->getSession()->write(
@@ -73,7 +93,56 @@ class SocialAuthMiddleware
 
         $request = $request->withAttribute('socialAuthStatus', $this->authStatus);
         $request = $request->withAttribute('socialRawData', $this->rawData);
+
         return $next($request, $response);
+    }
+
+    /**
+     * Handle social email step post.
+     *
+     * @param int $result authentication result
+     * @param \Psr\Http\Message\ServerRequestInterface $request The request.
+     * @param \Psr\Http\Message\ResponseInterface $response The response.
+     * @param callable $next Callback to invoke the next middleware.
+     * @return \Psr\Http\Message\ResponseInterface A response
+     */
+    private function handleSocialEmailStep(ServerRequest $request, ResponseInterface $response, $next)
+    {
+        if (!$request->getSession()->check(Configure::read('Users.Key.Session.social'))) {
+            throw new NotFoundException();
+        }
+        $request->getSession()->delete('Flash.auth');
+        $result = false;
+
+        if (!$request->is('post')) {
+            return $this->finishWithResult($result, $request, $response, $next);
+        }
+
+        if (!$this->_validateRegisterPost($request)) {
+            $this->authStatus = self::AUTH_ERROR_INVALID_RECAPTCHA;
+        } else {
+            $result = $this->authenticate($request);
+        }
+
+        return $this->finishWithResult($result, $request, $response, $next);
+    }
+
+    /**
+     * Check the POST and validate it for registration, for now we check the reCaptcha
+     *
+     * @param \Psr\Http\Message\ServerRequestInterface $request The request.
+     * @return bool
+     */
+    protected function _validateRegisterPost($request)
+    {
+        if (!Configure::read('Users.reCaptcha.registration')) {
+            return true;
+        }
+
+        return $this->validateReCaptcha(
+            $request->getData('g-recaptcha-response'),
+            $request->clientIp()
+        );
     }
 
     /**
@@ -95,6 +164,7 @@ class SocialAuthMiddleware
             $user = $data;
             $request->getSession()->delete(Configure::read('Users.Key.Session.social'));
         } else {
+
             if (empty($data) && !$rawData = $this->_authenticate($request)) {
                 return false;
             }
@@ -117,7 +187,7 @@ class SocialAuthMiddleware
         if (!$user || !$this->getConfig('userModel')) {
             return false;
         }
-        $this->rawData = $user;
+
         if (!$result = $this->_touch($user)) {
             return false;
         }
