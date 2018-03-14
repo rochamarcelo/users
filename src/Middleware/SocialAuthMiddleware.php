@@ -3,6 +3,7 @@
 namespace CakeDC\Users\Middleware;
 
 use Cake\Core\InstanceConfigTrait;
+use Cake\Network\Exception\NotFoundException;
 use CakeDC\Users\Auth\Exception\InvalidProviderException;
 use CakeDC\Users\Auth\Exception\InvalidSettingsException;
 use CakeDC\Users\Auth\Exception\MissingProviderConfigurationException;
@@ -36,9 +37,16 @@ class SocialAuthMiddleware
     const AUTH_ERROR_USER_NOT_ACTIVE = 30;
     const AUTH_ERROR_INVALID_RECAPTCHA = 40;
     const AUTH_SUCCESS = 100;
+
     protected $_defaultConfig = [];
     protected $authStatus = 0;
     protected $rawData = [];
+    protected $providerConfig = [];
+    protected $providerName;
+    /**
+     * @var \CakeDC\Users\Social\Service\ServiceInterface
+     */
+    protected $service;
 
     /**
      * Serve assets if the path matches one.
@@ -60,13 +68,9 @@ class SocialAuthMiddleware
             return $this->handleSocialEmailStep($request, $response, $next);
         }
 
-        if (empty($request->getQuery('code'))) {
-            $provider = $this->provider($request);
-            if ($this->getConfig('options.state')) {
-                $request->getSession()->write('oauth2state', $provider->getState());
-            }
-
-            return $response->withLocation($provider->getAuthorizationUrl());
+        $service = $this->service($request);
+        if ($service->isGetUserStep($request)) {
+            return $response->withLocation($service->getAuthorizationUrl($request));
         }
 
         return $this->finishWithResult($this->authenticate($request), $request, $response, $next);
@@ -173,21 +177,18 @@ class SocialAuthMiddleware
                 $rawData = $data;
             }
 
-            $provider = $this->_getProviderName($request);
             try {
-                $user = $this->_mapUser($provider, $rawData);
+                $user = $this->_mapUser($rawData);
             } catch (MissingProviderException $ex) {
                 $request->getSession()->delete(Configure::read('Users.Key.Session.social'));
                 throw $ex;
-            }
-            if ($user['provider'] === SocialAccountsTable::PROVIDER_TWITTER) {
-                $request->getSession()->write(Configure::read('Users.Key.Session.social'), $user);
             }
         }
         if (!$user || !$this->getConfig('userModel')) {
             return false;
         }
 
+        $this->rawData = $user;
         if (!$result = $this->_touch($user)) {
             return false;
         }
@@ -220,8 +221,6 @@ class SocialAuthMiddleware
     {
         $oauthConfig = Configure::read('OAuth');
         $enabledNoOAuth2Provider = $this->_isProviderEnabled($oauthConfig['providers']['twitter']);
-        //We unset twitter from providers to exclude from OAuth2 config
-        unset($oauthConfig['providers']['twitter']);
 
         $providers = [];
         foreach ($oauthConfig['providers'] as $provider => $options) {
@@ -234,7 +233,6 @@ class SocialAuthMiddleware
         $config['userModel'] = Configure::read('Users.table');
         $base = (array)Configure::read('SocialAuthMiddleware');
         $config = $this->normalizeConfig(Hash::merge($base, $config, $oauthConfig), $enabledNoOAuth2Provider);
-
         return $config;
     }
 
@@ -249,7 +247,6 @@ class SocialAuthMiddleware
     public function normalizeConfig(array $config, $enabledNoOAuth2Provider = false)
     {
         $config = Hash::merge((array)Configure::read('OAuth2'), $config);
-
         if (empty($config['providers']) && !$enabledNoOAuth2Provider) {
             throw new MissingProviderConfigurationException();
         }
@@ -275,6 +272,8 @@ class SocialAuthMiddleware
 
         $defaults = [
                 'className' => null,
+                'service' => null,
+                'mapper' => null,
                 'options' => [],
                 'collaborators' => [],
                 'mapFields' => [],
@@ -305,7 +304,7 @@ class SocialAuthMiddleware
      */
     protected function _validateConfig(&$value, $key)
     {
-        if ($key === 'className' && !class_exists($value)) {
+        if (in_array($key, ['className', 'service', 'mapper'], true) && !class_exists($value)) {
             throw new InvalidProviderException([$value]);
         } elseif (!is_array($value) && in_array($key, ['options', 'collaborators'])) {
             throw new InvalidSettingsException([$key]);
@@ -325,7 +324,7 @@ class SocialAuthMiddleware
     }
 
     /**
-     * Authenticates with OAuth2 provider by getting an access token and
+     * Authenticates with OAuth provider by getting an access token and
      * retrieving the authorized user's profile data.
      *
      * @param \Cake\Http\ServerRequest $request Request object.
@@ -333,17 +332,8 @@ class SocialAuthMiddleware
      */
     protected function _authenticate(ServerRequest $request)
     {
-        if (!$this->_validate($request)) {
-            return false;
-        }
-
-        $provider = $this->provider($request);
-        $code = $request->getQuery('code');
-
         try {
-            $token = $provider->getAccessToken('authorization_code', compact('code'));
-
-            return compact('token') + $provider->getResourceOwner($token)->toArray();
+            return $this->service($request)->getUser($request);
         } catch (\Exception $e) {
             $message = sprintf(
                 "Error getting an access token / retrieving the authorized user's profile data. Error message: %s %s",
@@ -354,32 +344,6 @@ class SocialAuthMiddleware
 
             return false;
         }
-    }
-
-    /**
-     * Validates OAuth2 request.
-     *
-     * @param \Cake\Http\ServerRequest $request Request object.
-     * @return bool
-     */
-    protected function _validate(ServerRequest $request)
-    {
-        if (!array_key_exists('code', $request->getQueryParams()) || !$this->provider($request)) {
-            return false;
-        }
-
-        $session = $request->getSession();
-        $sessionKey = 'oauth2state';
-        $state = $request->getQuery('state');
-
-        if ($this->getConfig('options.state') &&
-            (!$state || $state !== $session->read($sessionKey))) {
-            $session->delete($sessionKey);
-
-            return false;
-        }
-
-        return true;
     }
 
     /**
@@ -403,72 +367,26 @@ class SocialAuthMiddleware
     }
 
     /**
-     * Handles unauthenticated access attempts. Will automatically forward to the
-     * requested provider's authorization URL to let the user grant access to the
-     * application.
-     *
-     * @param \Cake\Http\ServerRequest $request Request object.
-     * @param \Cake\Network\Response $response Response object.
-     * @return \Cake\Network\Response|null
-     */
-    public function unauthenticated(ServerRequest $request, Response $response)
-    {
-        $provider = $this->provider($request);
-        if (empty($provider) || !empty($request->getQuery('code'))) {
-            return null;
-        }
-
-        if ($this->getConfig('options.state')) {
-            $request->getSession()->write('oauth2state', $provider->getState());
-        }
-
-        $response = $response->withLocation($provider->getAuthorizationUrl());
-
-        return $response;
-    }
-
-    /**
-     * Returns the `$request`-ed provider.
+     * Returns the `$requested service.
      *
      * @param \Cake\Http\ServerRequest $request Current HTTP request.
-     * @return \League\Oauth2\Client\Provider\GenericProvider|false
+     * @return \CakeDC\Users\Social\Service\ServiceInterface|false
      */
-    public function provider(ServerRequest $request)
+    public function service(ServerRequest $request)
     {
         $alias = $request->getAttribute('params')['provider'] ?? null;
 
-        if (!$alias) {
-            return false;
+        $config = $this->getConfig('providers.' . $alias);
+        if (!$alias || !$config) {
+            throw new NotFoundException('Not found provider');
+        }
+        $this->providerName = $alias;
+        $this->providerConfig = $config;
+        if ($this->service === null) {
+            $this->service = new $config['service']($config);
         }
 
-        if (empty($this->_provider)) {
-            $this->_provider = $this->_getProvider($alias);
-        }
-
-        return $this->_provider;
-    }
-
-    /**
-     * Instantiates provider object.
-     *
-     * @param string $alias of the provider.
-     * @return \League\Oauth2\Client\Provider\GenericProvider
-     */
-    protected function _getProvider($alias)
-    {
-        if (!$config = $this->getConfig('providers.' . $alias)) {
-            return false;
-        }
-
-        $this->setConfig($config);
-
-        if (is_object($config) && $config instanceof AbstractProvider) {
-            return $config;
-        }
-
-        $class = $config['className'];
-
-        return new $class($config['options'], $config['collaborators']);
+        return $this->service;
     }
 
     /**
@@ -481,9 +399,6 @@ class SocialAuthMiddleware
     protected function _touch(array $data)
     {
         try {
-            if (empty($data['provider']) && !empty($this->_provider)) {
-                $data['provider'] = SocialUtils::getProvider($this->_provider);
-            }
             $user = $this->_socialLogin($data);
         } catch (UserNotActiveException $ex) {
             $this->authStatus = self::AUTH_ERROR_USER_NOT_ACTIVE;
@@ -535,40 +450,17 @@ class SocialAuthMiddleware
     }
 
     /**
-     * Get the provider name based on the request or on the provider set.
+     * Map userdata with mapper defined at $providerConfig
      *
-     * @param \Cake\Http\ServerRequest $request Request object.
-     * @return mixed Either false or an array of user information
-     */
-    protected function _getProviderName($request = null)
-    {
-        $provider = false;
-        if (!empty($request->getParam('provider'))) {
-            $provider = ucfirst($request->getParam('provider'));
-        } elseif (!is_null($this->_provider)) {
-            $provider = SocialUtils::getProvider($this->_provider);
-        }
-
-        return $provider;
-    }
-
-    /**
-     * Get the provider name based on the request or on the provider set.
-     *
-     * @param string $provider Provider name.
      * @param array $data User data
-     * @throws MissingProviderException
      * @return mixed Either false or an array of user information
      */
-    protected function _mapUser($provider, $data)
+    protected function _mapUser($data)
     {
-        if (empty($provider)) {
-            throw new MissingProviderException(__d('CakeDC/Users', "Provider cannot be empty"));
-        }
-        $providerMapperClass = $this->getConfig('providers.' . strtolower($provider) . '.options.mapper') ?: "\\CakeDC\\Users\\Auth\\Social\\Mapper\\$provider";
+        $providerMapperClass = $this->providerConfig['mapper'];
         $providerMapper = new $providerMapperClass($data);
         $user = $providerMapper();
-        $user['provider'] = $provider;
+        $user['provider'] = $this->providerName;
 
         return $user;
     }
