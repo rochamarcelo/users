@@ -38,7 +38,7 @@ class OAuth2Service implements ServiceInterface
      */
     public function isGetUserStep(ServerRequest $request): bool
     {
-        return empty($request->getQuery('code'));
+        return !empty($request->getQuery('code'));
     }
 
     /**

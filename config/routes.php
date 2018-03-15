@@ -17,12 +17,6 @@ Router::plugin('CakeDC/Users', ['path' => '/users'], function (RouteBuilder $rou
     $routes->fallbacks('DashedRoute');
 });
 
-Router::connect('/auth/twitter', [
-    'plugin' => 'CakeDC/Users',
-    'controller' => 'Users',
-    'action' => 'twitterLogin',
-    'provider' => 'twitter'
-]);
 Router::connect('/accounts/validate/*', [
     'plugin' => 'CakeDC/Users',
     'controller' => 'SocialAccounts',

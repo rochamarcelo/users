@@ -69,7 +69,7 @@ class SocialAuthMiddleware
         }
 
         $service = $this->service($request);
-        if ($service->isGetUserStep($request)) {
+        if (!$service->isGetUserStep($request)) {
             return $response->withLocation($service->getAuthorizationUrl($request));
         }
 
