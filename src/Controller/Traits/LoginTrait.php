@@ -35,32 +35,6 @@ trait LoginTrait
     use CustomUsersTableTrait;
 
     /**
-     * Do twitter login
-     *
-     * @return mixed
-     */
-    public function twitterLogin()
-    {
-        $this->autoRender = false;
-        $server = new Twitter([
-            'identifier' => Configure::read('OAuth.providers.twitter.options.clientId'),
-            'secret' => Configure::read('OAuth.providers.twitter.options.clientSecret'),
-            'callback_uri' => Configure::read('OAuth.providers.twitter.options.redirectUri'),
-        ]);
-        $oauthToken = $this->request->getQuery('oauth_token');
-        $oauthVerifier = $this->request->getQuery('oauth_verifier');
-        if (!empty($oauthToken) && !empty($oauthVerifier)) {
-
-        } else {
-            $temporaryCredentials = $server->getTemporaryCredentials();
-            $this->request->getSession()->write('temporary_credentials', $temporaryCredentials);
-            $url = $server->getAuthorizationUrl($temporaryCredentials);
-
-            return $this->redirect($url);
-        }
-    }
-
-    /**
      * @param int $error auth error
      * @param mixed $data data
      * @param bool|false $flash flash
@@ -126,6 +100,7 @@ trait LoginTrait
         }
 
         $data = $this->request->getAttribute('socialRawData');
+
         return $this->failedSocialLogin($status, $data);
     }
 

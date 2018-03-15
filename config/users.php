@@ -157,9 +157,11 @@ $config = [
         ],
     ],
     'SocialAuthMiddleware' => [
-        'usernameField' => 'username',
-        'finder' => 'all',
-        'sessionAuthKey' => 'Auth.User'
+        'sessionAuthKey' => 'Auth.User',
+        'locator' => [
+            'usernameField' => 'username',
+            'finder' => 'all',
+        ]
     ],
     'OAuth' => [
         'path' => ['plugin' => 'CakeDC/Users', 'controller' => 'Users', 'action' => 'socialLogin', 'prefix' => null],

@@ -22,6 +22,8 @@ use Cake\Http\ServerRequest;
 use Cake\Log\LogTrait;
 use Cake\ORM\TableRegistry;
 use Cake\Utility\Hash;
+use CakeDC\Users\Social\Locator\DatabaseLocator;
+use CakeDC\Users\Social\ProviderConfig;
 use League\OAuth2\Client\Provider\AbstractProvider;
 use Psr\Http\Message\ResponseInterface;
 
@@ -36,6 +38,7 @@ class SocialAuthMiddleware
     const AUTH_ERROR_ACCOUNT_NOT_ACTIVE = 20;
     const AUTH_ERROR_USER_NOT_ACTIVE = 30;
     const AUTH_ERROR_INVALID_RECAPTCHA = 40;
+    const AUTH_ERROR_FIND_USER = 50;
     const AUTH_SUCCESS = 100;
 
     protected $_defaultConfig = [];
@@ -63,7 +66,7 @@ class SocialAuthMiddleware
             return $next($request, $response);
         }
 
-        $this->setConfig($this->initialConfig([]));
+        $this->setConfig(Configure::read('SocialAuthMiddleware'));
         if ($action == 'socialEmail') {
             return $this->handleSocialEmailStep($request, $response, $next);
         }
@@ -137,7 +140,7 @@ class SocialAuthMiddleware
      * @param \Psr\Http\Message\ServerRequestInterface $request The request.
      * @return bool
      */
-    protected function _validateRegisterPost($request)
+    private function _validateRegisterPost($request)
     {
         if (!Configure::read('Users.reCaptcha.registration')) {
             return true;
@@ -157,7 +160,7 @@ class SocialAuthMiddleware
      * @return bool
      * @throws \RuntimeException If the `CakeDC/Users/OAuth2.newUser` event is missing or returns empty.
      */
-    public function authenticate(ServerRequest $request)
+    private function authenticate(ServerRequest $request)
     {
         $data = $request->getSession()->read(Configure::read('Users.Key.Session.social'));
         $requestDataEmail = $request->getData('email');
@@ -184,7 +187,7 @@ class SocialAuthMiddleware
                 throw $ex;
             }
         }
-        if (!$user || !$this->getConfig('userModel')) {
+        if (!$user) {
             return false;
         }
 
@@ -210,120 +213,6 @@ class SocialAuthMiddleware
     protected $_provider;
 
     /**
-     * Get initial config
-     *
-     * @param array $config Array of config to use.
-     * @throws \Exception
-     *
-     * @return array
-     */
-    public function initialConfig(array $config = [])
-    {
-        $oauthConfig = Configure::read('OAuth');
-        $enabledNoOAuth2Provider = $this->_isProviderEnabled($oauthConfig['providers']['twitter']);
-
-        $providers = [];
-        foreach ($oauthConfig['providers'] as $provider => $options) {
-            if ($this->_isProviderEnabled($options)) {
-                $providers[$provider] = $options;
-            }
-        }
-        $oauthConfig['providers'] = $providers;
-        Configure::write('OAuth2', $oauthConfig);
-        $config['userModel'] = Configure::read('Users.table');
-        $base = (array)Configure::read('SocialAuthMiddleware');
-        $config = $this->normalizeConfig(Hash::merge($base, $config, $oauthConfig), $enabledNoOAuth2Provider);
-        return $config;
-    }
-
-    /**
-     * Normalizes providers' configuration.
-     *
-     * @param array $config Array of config to normalize.
-     * @param bool $enabledNoOAuth2Provider True when any noOAuth2 provider is enabled
-     * @return array
-     * @throws \Exception
-     */
-    public function normalizeConfig(array $config, $enabledNoOAuth2Provider = false)
-    {
-        $config = Hash::merge((array)Configure::read('OAuth2'), $config);
-        if (empty($config['providers']) && !$enabledNoOAuth2Provider) {
-            throw new MissingProviderConfigurationException();
-        }
-
-        if (!empty($config['providers'])) {
-            array_walk($config['providers'], [$this, '_normalizeConfig'], $config);
-        }
-
-        return $config;
-    }
-
-    /**
-     * Callback to loop through config values.
-     *
-     * @param array $config Configuration.
-     * @param string $alias Provider's alias (key) in configuration.
-     * @param array $parent Parent configuration.
-     * @return void
-     */
-    protected function _normalizeConfig(&$config, $alias, $parent)
-    {
-        unset($parent['providers']);
-
-        $defaults = [
-                'className' => null,
-                'service' => null,
-                'mapper' => null,
-                'options' => [],
-                'collaborators' => [],
-                'mapFields' => [],
-            ] + $parent + $this->_defaultConfig;
-
-        $config = array_intersect_key($config, $defaults);
-        $config += $defaults;
-
-        array_walk($config, [$this, '_validateConfig']);
-
-        foreach (['options', 'collaborators'] as $key) {
-            if (empty($parent[$key]) || empty($config[$key])) {
-                continue;
-            }
-
-            $config[$key] = array_merge($parent[$key], $config[$key]);
-        }
-    }
-
-    /**
-     * Validates the configuration.
-     *
-     * @param mixed $value Value.
-     * @param string $key Key.
-     * @return void
-     * @throws \CakeDC\Users\Auth\Exception\InvalidProviderException
-     * @throws \CakeDC\Users\Auth\Exception\InvalidSettingsException
-     */
-    protected function _validateConfig(&$value, $key)
-    {
-        if (in_array($key, ['className', 'service', 'mapper'], true) && !class_exists($value)) {
-            throw new InvalidProviderException([$value]);
-        } elseif (!is_array($value) && in_array($key, ['options', 'collaborators'])) {
-            throw new InvalidSettingsException([$key]);
-        }
-    }
-
-    /**
-     * Returns when a provider has been enabled.
-     *
-     * @param array $options array of options by provider
-     * @return bool
-     */
-    protected function _isProviderEnabled($options)
-    {
-        return !empty($options['options']['redirectUri']) && !empty($options['options']['clientId']) &&
-            !empty($options['options']['clientSecret']);
-    }
-
-    /**
      * Authenticates with OAuth provider by getting an access token and
      * retrieving the authorized user's profile data.
      *
@@ -346,25 +235,6 @@ class SocialAuthMiddleware
         }
     }
 
-    /**
-     * Maps raw provider's user profile data to local user's data schema.
-     *
-     * @param array $data Raw user data.
-     * @return array
-     */
-    protected function _map($data)
-    {
-        if (!$map = $this->getConfig('mapFields')) {
-            return $data;
-        }
-
-        foreach ($map as $dst => $src) {
-            $data[$dst] = $data[$src];
-            unset($data[$src]);
-        }
-
-        return $data;
-    }
 
     /**
      * Returns the `$requested service.
@@ -372,19 +242,20 @@ class SocialAuthMiddleware
      * @param \Cake\Http\ServerRequest $request Current HTTP request.
      * @return \CakeDC\Users\Social\Service\ServiceInterface|false
      */
-    public function service(ServerRequest $request)
+    protected function service(ServerRequest $request)
     {
-        $alias = $request->getAttribute('params')['provider'] ?? null;
+        if ($this->service !== null) {
+            return $this->service;
+        }
 
-        $config = $this->getConfig('providers.' . $alias);
+        $alias = $request->getAttribute('params')['provider'] ?? null;
+        $config = (new ProviderConfig())->getConfig($alias);
         if (!$alias || !$config) {
             throw new NotFoundException('Not found provider');
         }
         $this->providerName = $alias;
         $this->providerConfig = $config;
-        if ($this->service === null) {
-            $this->service = new $config['service']($config);
-        }
+        $this->service = new $config['service']($config);
 
         return $this->service;
     }
@@ -398,8 +269,9 @@ class SocialAuthMiddleware
      */
     protected function _touch(array $data)
     {
+        $locator = new DatabaseLocator($this->getConfig('locator'));
         try {
-            $user = $this->_socialLogin($data);
+            return $locator->getOrCreate($data);
         } catch (UserNotActiveException $ex) {
             $this->authStatus = self::AUTH_ERROR_USER_NOT_ACTIVE;
             $exception = $ex;
@@ -409,44 +281,15 @@ class SocialAuthMiddleware
         } catch (MissingEmailException $ex) {
             $this->authStatus = self::AUTH_ERROR_MISSING_EMAIL;
             $exception = $ex;
+        } catch(RecordNotFoundException $ex) {
+            $this->authStatus = self::AUTH_ERROR_FIND_USER;
+            $exception = $ex;
         }
 
-        if (!empty($exception)) {
-            $args = ['exception' => $exception, 'rawData' => $data];
-            $this->dispatchEvent( AuthListener::EVENT_FAILED_SOCIAL_LOGIN, $args);
-            return false;
-        }
+        $args = ['exception' => $exception, 'rawData' => $data];
+        $this->dispatchEvent( AuthListener::EVENT_FAILED_SOCIAL_LOGIN, $args);
 
-        // If new SocialAccount was created $user is returned containing it
-        if ($user->get('social_accounts')) {
-            $this->dispatchEvent(AuthListener::EVENT_AFTER_SOCIAL_REGISTER, compact('user'));
-        }
-
-        if (!empty($user->username)) {
-
-            $user = $this->findUser($user)->first();
-        }
-
-        return $user;
-    }
-
-    /**
-     * Get query object for fetching user from database.
-     *
-     * @param User $user The user.
-     *
-     * @return \Cake\Orm\Query
-     */
-    protected function findUser($user)
-    {
-        $config = $this->_config;
-        $table = TableRegistry::get($config['userModel']);
-        $field = $this->getConfig('usernameField');
-        $finder = $this->getConfig('finder');
-
-        return $table->find($finder)->where([
-            $field => $user->get($field)
-        ]);
+        return false;
     }
 
     /**
@@ -461,25 +304,6 @@ class SocialAuthMiddleware
         $providerMapper = new $providerMapperClass($data);
         $user = $providerMapper();
         $user['provider'] = $this->providerName;
-
-        return $user;
-    }
-
-    /**
-     * @param mixed $data data
-     * @return mixed
-     */
-    protected function _socialLogin($data)
-    {
-        $options = [
-            'use_email' => Configure::read('Users.Email.required'),
-            'validate_email' => Configure::read('Users.Email.validate'),
-            'token_expiration' => Configure::read('Users.Token.expiration')
-        ];
-
-        $userModel = Configure::read('Users.table');
-        $User = TableRegistry::get($userModel);
-        $user = $User->socialLogin($data, $options);
 
         return $user;
     }
