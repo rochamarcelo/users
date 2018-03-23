@@ -70,9 +70,9 @@ class BaseApplication extends CakeBaseApplication
             // Add routing middleware.
             ->add(new RoutingMiddleware($this))
 
-            ->add(new SocialAuthMiddleware())
+            ->add(SocialAuthMiddleware::class)
 
-            ->add(new SocialEmailMiddleware());
+            ->add(SocialEmailMiddleware::class);
 
 
         $authentication = new AuthenticationMiddleware($this);

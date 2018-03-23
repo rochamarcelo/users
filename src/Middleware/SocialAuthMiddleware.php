@@ -51,7 +51,7 @@ class SocialAuthMiddleware
     public function __invoke(ServerRequest $request, ResponseInterface $response, $next)
     {
         $action = $request->getParam('action');
-        if ($action !== 'socialLogin') {
+        if ($action !== 'socialLogin' || $request->getParam('plugin') !== 'CakeDC/Users') {
             return $next($request, $response);
         }
 

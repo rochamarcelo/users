@@ -23,7 +23,7 @@ class SocialEmailMiddleware extends  SocialAuthMiddleware
     public function __invoke(ServerRequest $request, ResponseInterface $response, $next)
     {
         $action = $request->getParam('action');
-        if ($action !== 'socialEmail') {
+        if ($action !== 'socialEmail' || $request->getParam('plugin') !== 'CakeDC/Users') {
             return $next($request, $response);
         }
 
