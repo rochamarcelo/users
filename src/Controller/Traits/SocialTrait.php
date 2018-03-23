@@ -38,8 +38,12 @@ trait SocialTrait
                 return;
             }
 
-            $user = $this->request->getAttribute('identity')->getOriginalData();
-            return $this->_afterIdentifyUser($user, true);
+            $result = $this->request->getAttribute('authentication')->getResult();
+            if ($result->isValid()) {
+                $user = $this->request->getAttribute('identity')->getOriginalData();
+
+                return $this->_afterIdentifyUser($user, true);
+            }
         }
     }
 }
