@@ -47,13 +47,6 @@ class UsersAuthComponent extends Component
         $this->_validateConfig();
         $this->_initAuth();
 
-        if (Configure::read('Users.Social.login')) {
-            $this->_loadSocialLogin();
-        }
-        if (Configure::read('Users.RememberMe.active')) {
-            $this->_loadRememberMe();
-        }
-
         if (Configure::read('Users.GoogleAuthenticator.login')) {
             $this->_loadGoogleAuthenticator();
         }
@@ -69,28 +62,6 @@ class UsersAuthComponent extends Component
     protected function _loadGoogleAuthenticator()
     {
         $this->getController()->loadComponent('CakeDC/Users.GoogleAuthenticator');
-    }
-
-    /**
-     * Load Social Auth object
-     *
-     * @return void
-     */
-    protected function _loadSocialLogin()
-    {
-        $this->getController()->Auth->setConfig('authenticate', [
-            Configure::read('Users.Social.authenticator')
-        ], true);
-    }
-
-    /**
-     * Load RememberMe component and Auth objects
-     *
-     * @return void
-     */
-    protected function _loadRememberMe()
-    {
-        $this->getController()->loadComponent('CakeDC/Users.RememberMe');
     }
 
     /**
