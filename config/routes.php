@@ -16,7 +16,12 @@ use CakeDC\Users\Middleware\SocialAuthMiddleware;
 Router::plugin('CakeDC/Users', ['path' => '/users'], function (RouteBuilder $routes) {
     $routes->fallbacks('DashedRoute');
 });
-
+Router::scope('/', function ($routes) {
+    $routes->registerMiddleware('socialAuth', new \CakeDC\Users\Middleware\SocialAuthMiddleware());
+    $routes->scope('/auth', function ($routes) {
+        $routes->applyMiddleware('socialAuth');
+    });
+});
 Router::connect('/accounts/validate/*', [
     'plugin' => 'CakeDC/Users',
     'controller' => 'SocialAccounts',
