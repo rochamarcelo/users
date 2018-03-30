@@ -113,7 +113,6 @@ trait LoginTrait
     {
         $result = $this->request->getAttribute('authentication')->getResult();
         if ($result->isValid()) {
-            $this->Auth->setUser((array)$this->request->getAttribute('identity')->getOriginalData());
             return $this->redirect('/');
         }
 
@@ -245,8 +244,6 @@ trait LoginTrait
     protected function _afterIdentifyUser($user, $socialLogin = false, $googleAuthenticatorLogin = false)
     {
         if (!empty($user)) {
-            $user = is_object($user) ? $user['User']->toArray() : $user;
-            $this->Auth->setUser($user);
 
             if ($googleAuthenticatorLogin) {
                 $url = Configure::read('GoogleAuthenticator.verifyAction');

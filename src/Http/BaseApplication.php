@@ -9,6 +9,7 @@ use Cake\Http\BaseApplication as CakeBaseApplication;
 use Cake\Log\Log;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
+use CakeDC\Auth\Middleware\RbacMiddleware;
 use CakeDC\Users\Middleware\SocialAuthMiddleware;
 use CakeDC\Users\Middleware\SocialEmailMiddleware;
 
@@ -76,9 +77,16 @@ class BaseApplication extends CakeBaseApplication
                 ->add(SocialEmailMiddleware::class);
         }
 
-
         $authentication = new AuthenticationMiddleware($this);
         $middlewareQueue->add($authentication);
+        $middlewareQueue->add(new RbacMiddleware(null, [
+            'unauthorizedRedirect' => [
+                'prefix' => false,
+                'plugin' => 'CakeDC/Users',
+                'controller' => 'Users',
+                'action' => 'login',
+            ]
+        ]));
 
         return $middlewareQueue;
     }
