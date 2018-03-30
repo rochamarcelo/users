@@ -112,8 +112,8 @@ trait LinkSocialTrait
 
         try {
             $data = $this->_mapSocialUser($alias, $data);
-
-            $user = $this->getUsersTable()->get($this->Auth->user('id'));
+            $userId = Hash::get($this->request->getAttribute('identity') ?? [], 'id');
+            $user = $this->getUsersTable()->get($userId);
 
             $this->getUsersTable()->linkSocialAccount($user, $data);
 

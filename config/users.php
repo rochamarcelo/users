@@ -128,10 +128,14 @@ $config = [
     // default configuration used to auto-load the Auth Component, override to change the way Auth works
     'Auth' => [
         'AuthenticationComponent' => [
-            'logoutRedirect' => '/'
+            'loginAction' => '/login',
+            'logoutRedirect' => '/login',
+            'loginRedirect' => '/'
         ],
         'Authenticators' => [
-            'Authentication.Session',
+            'Authentication.Session' => [
+                'sessionKey' => 'Auth'
+            ],
             'Authentication.Form' => [
                 'loginUrl' => '/login'
             ],
@@ -157,7 +161,7 @@ $config = [
         ],
     ],
     'SocialAuthMiddleware' => [
-        'sessionAuthKey' => 'Auth.User',
+        'sessionAuthKey' => 'Auth',
         'locator' => [
             'usernameField' => 'username',
             'finder' => 'all',

@@ -11,6 +11,7 @@
 
 namespace CakeDC\Users\Controller\Traits;
 
+use Cake\Utility\Hash;
 use CakeDC\Users\Exception\UserNotActiveException;
 use CakeDC\Users\Exception\UserNotFoundException;
 use CakeDC\Users\Exception\WrongPasswordException;
@@ -36,9 +37,9 @@ trait PasswordManagementTrait
     public function changePassword()
     {
         $user = $this->getUsersTable()->newEntity();
-        $id = $this->Auth->user('id');
+        $id = Hash::get($this->request->getAttribute('identity') ?? [], 'User.id');
         if (!empty($id)) {
-            $user->id = $this->Auth->user('id');
+            $user->id = Hash::get($this->request->getAttribute('identity') ?? [], 'id');
             $validatePassword = true;
             //@todo add to the documentation: list of routes used
             $redirect = Configure::read('Users.Profile.route');
@@ -47,12 +48,12 @@ trait PasswordManagementTrait
             $validatePassword = false;
             if (!$user->id) {
                 $this->Flash->error(__d('CakeDC/Users', 'User was not found'));
-                $this->redirect($this->Auth->config('loginAction'));
+                $this->redirect($this->Authentication->getConfig('loginAction'));
 
                 return;
             }
             //@todo add to the documentation: list of routes used
-            $redirect = $this->Auth->config('loginAction');
+            $redirect = $this->Authentication->getConfig('loginAction');
         }
         $this->set('validatePassword', $validatePassword);
         if ($this->request->is('post')) {
