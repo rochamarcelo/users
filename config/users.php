@@ -146,7 +146,7 @@ $config = [
                 'queryParam' => 'api_key',
                 'tokenPrefix' => null,
             ],
-            'Authentication.Cookie' => [
+            'CakeDC/Users.Cookie' => [
                 'skipGoogleVerify' => true,
                 'rememberMeField' => 'remember_me',
                 'cookie' => [

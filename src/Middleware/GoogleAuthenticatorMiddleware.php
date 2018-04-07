@@ -42,6 +42,9 @@ class GoogleAuthenticatorMiddleware
         $request = $request->withoutAttribute('authentication');
         $request = $request->withoutAttribute('authenticationResult');
         $request->getSession()->write('temporarySession', $identity->getOriginalData());
+        $request->getSession()->write('CookieAuth', [
+            'remember_me' => $request->getData('remember_me')
+        ]);
 
         $url = Router::url(['action' => 'verify']);
 

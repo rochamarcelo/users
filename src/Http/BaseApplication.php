@@ -10,7 +10,6 @@ use Cake\Log\Log;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
 use CakeDC\Auth\Middleware\RbacMiddleware;
-use CakeDC\Users\Middleware\GoogleAuthenticatorMiddleware;
 use CakeDC\Users\Middleware\SocialAuthMiddleware;
 use CakeDC\Users\Middleware\SocialEmailMiddleware;
 
@@ -86,7 +85,10 @@ class BaseApplication extends CakeBaseApplication
 
         $authentication = new AuthenticationMiddleware($this);
         $middlewareQueue->add($authentication);
-        $middlewareQueue->add(GoogleAuthenticatorMiddleware::class);
+        if (Configure::read('Users.GoogleAuthenticator.login')) {
+            $middlewareQueue->add('CakeDC\Users\Middleware\GoogleAuthenticatorMiddleware');
+        }
+
         $middlewareQueue->add(new RbacMiddleware(null, [
             'unauthorizedRedirect' => [
                 'prefix' => false,
