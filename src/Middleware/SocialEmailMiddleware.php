@@ -13,7 +13,7 @@ class SocialEmailMiddleware extends  SocialAuthMiddleware
     use ReCaptchaTrait;
 
     /**
-     * Serve assets if the path matches one.
+     * Complete social auth with user without social e-mail
      *
      * @param \Psr\Http\Message\ServerRequestInterface $request The request.
      * @param \Psr\Http\Message\ResponseInterface $response The response.

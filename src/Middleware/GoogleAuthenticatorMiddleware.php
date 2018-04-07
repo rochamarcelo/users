@@ -15,7 +15,7 @@ class GoogleAuthenticatorMiddleware
     use LogTrait;
 
     /**
-     * Serve assets if the path matches one.
+     * Proceed to second step of two factor authentication. See CakeDC\Users\Controller\Traits\verify
      *
      * @param \Psr\Http\Message\ServerRequestInterface $request The request.
      * @param \Psr\Http\Message\ResponseInterface $response The response.

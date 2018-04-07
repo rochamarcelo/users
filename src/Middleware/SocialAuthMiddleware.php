@@ -41,7 +41,7 @@ class SocialAuthMiddleware
     protected $service;
 
     /**
-     * Serve assets if the path matches one.
+     * Perform social auth
      *
      * @param \Psr\Http\Message\ServerRequestInterface $request The request.
      * @param \Psr\Http\Message\ResponseInterface $response The response.
