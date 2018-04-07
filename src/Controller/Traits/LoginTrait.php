@@ -144,19 +144,11 @@ trait LoginTrait
      * Update remember me and determine redirect url after user identified
      * @param array $user user data after identified
      * @param bool $socialLogin is social login
-     * @param bool $googleAuthenticatorLogin googleAuthenticatorLogin
      * @return array
      */
-    protected function _afterIdentifyUser($user, $socialLogin = false, $googleAuthenticatorLogin = false)
+    protected function _afterIdentifyUser($user, $socialLogin = false)
     {
         if (!empty($user)) {
-
-            if ($googleAuthenticatorLogin) {
-                $url = Configure::read('GoogleAuthenticator.verifyAction');
-
-                return $this->redirect($url);
-            }
-
             $event = $this->dispatchEvent(UsersAuthComponent::EVENT_AFTER_LOGIN, ['user' => $user]);
             if (is_array($event->result)) {
                 return $this->redirect($event->result);
