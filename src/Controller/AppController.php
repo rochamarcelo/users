@@ -33,5 +33,9 @@ class AppController extends BaseController
             $this->loadComponent('Csrf');
         }
         $this->loadComponent('Authentication.Authentication', Configure::read('Auth.AuthenticationComponent'));
+
+        if (Configure::read('Users.GoogleAuthenticator.login')) {
+            $this->loadComponent('CakeDC/Users.GoogleAuthenticator');
+        }
     }
 }

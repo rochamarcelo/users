@@ -134,24 +134,27 @@ $config = [
         ],
         'Authenticators' => [
             'Authentication.Session' => [
-                'sessionKey' => 'Auth'
+                'skipGoogleVerify' => true,
+                'sessionKey' => 'Auth',
             ],
             'Authentication.Form' => [
                 'loginUrl' => '/login'
             ],
             'Authentication.Token' => [
+                'skipGoogleVerify' => true,
                 'header' => null,
                 'queryParam' => 'api_key',
-                'tokenPrefix' => null
+                'tokenPrefix' => null,
             ],
             'Authentication.Cookie' => [
+                'skipGoogleVerify' => true,
                 'rememberMeField' => 'remember_me',
                 'cookie' => [
                     'expires' => '1 month',
                     'httpOnly' => true,
                 ],
                 'loginUrl' => '/login'
-            ]
+            ],
         ],
         'Identifiers' => [
             'Authentication.Password',

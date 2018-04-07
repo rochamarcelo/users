@@ -10,6 +10,7 @@ use Cake\Log\Log;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
 use CakeDC\Auth\Middleware\RbacMiddleware;
+use CakeDC\Users\Middleware\GoogleAuthenticatorMiddleware;
 use CakeDC\Users\Middleware\SocialAuthMiddleware;
 use CakeDC\Users\Middleware\SocialEmailMiddleware;
 
@@ -49,6 +50,12 @@ class BaseApplication extends CakeBaseApplication
             $service->loadAuthenticator($authenticator, $options);
         }
 
+        if (Configure::read('Users.GoogleAuthenticator.login')) {
+            $service->loadAuthenticator('CakeDC/Users.GoogleTwoFactor', [
+                'skipGoogleVerify' => true,
+            ]);
+        }
+
         return $service;
     }
 
@@ -79,6 +86,7 @@ class BaseApplication extends CakeBaseApplication
 
         $authentication = new AuthenticationMiddleware($this);
         $middlewareQueue->add($authentication);
+        $middlewareQueue->add(GoogleAuthenticatorMiddleware::class);
         $middlewareQueue->add(new RbacMiddleware(null, [
             'unauthorizedRedirect' => [
                 'prefix' => false,
