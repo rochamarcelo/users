@@ -40,7 +40,9 @@
         "luchianenco/oauth2-amazon": "^1.1",
         "google/recaptcha": "@stable",
         "robthree/twofactorauth": "~1.6.0",
-        "satooshi/php-coveralls": "dev-master"
+        "satooshi/php-coveralls": "^2.0",
+        "cakephp/authentication": "^1.0@RC",
+        "league/oauth1-client": "^1.7"
     },
     "suggest": {
         "league/oauth1-client": "Provides Social Authentication with Twitter",
@@ -62,5 +64,7 @@
             "CakeDC\\Users\\Test\\": "tests",
             "CakeDC\\Users\\Test\\Fixture\\": "tests"
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
