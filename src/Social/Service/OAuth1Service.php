@@ -99,8 +99,8 @@ class OAuth1Service implements ServiceInterface
      */
     protected function setProvider($config)
     {
-        if (is_object($config) && $config instanceof Server) {
-            $this->provider = $config;
+        if (is_object($config['className']) && $config['className'] instanceof Server) {
+            $this->provider = $config['className'];
         } else {
             $class = $config['className'];
 
