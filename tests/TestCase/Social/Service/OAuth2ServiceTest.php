@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: usuario
- * Date: 16/04/18
- * Time: 17:09
- */
 
 namespace CakeDC\Users\Test\TestCase\Social\Service;
 

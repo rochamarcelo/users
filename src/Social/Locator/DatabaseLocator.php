@@ -48,7 +48,7 @@ class DatabaseLocator implements LocatorInterface
     public function getOrCreate(array $rawData): User
     {
         if (!$this->getConfig('userModel')) {
-            new InvalidSettingsException(__d('CakeDC/Users', 'Users table is not defined'));
+            throw new InvalidSettingsException(__d('CakeDC/Users', 'Users table is not defined'));
         }
 
         $user = $this->_socialLogin($rawData);
@@ -80,9 +80,6 @@ class DatabaseLocator implements LocatorInterface
         $finder = $this->getConfig('finder');
 
         $primaryKey = (array)$table->getPrimaryKey();
-        if (empty($primaryKey)) {
-            throw new \UnexpectedValueException(__d('CakeDC/Users', 'Table shoud have primary key'));
-        }
 
         $conditions = [];
         foreach ($primaryKey as $key) {
