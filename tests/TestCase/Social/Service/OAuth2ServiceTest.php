@@ -13,12 +13,13 @@ use Cake\Http\ServerRequest;
 use Cake\Http\ServerRequestFactory;
 use Cake\Network\Exception\BadRequestException;
 use Cake\Network\Session;
+use Cake\TestSuite\TestCase;
 use CakeDC\Users\Social\Service\OAuth2Service;
 use CakeDC\Users\Social\Service\ServiceInterface;
 use League\OAuth2\Client\Provider\FacebookUser;
 use Zend\Diactoros\Uri;
 
-class OAuth2ServiceTest extends \PHPUnit_Framework_TestCase
+class OAuth2ServiceTest extends TestCase
 {
     /**
      * @var \CakeDC\Users\Social\Service\OAuth2Servic
