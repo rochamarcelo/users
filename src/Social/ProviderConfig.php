@@ -99,7 +99,7 @@ class ProviderConfig
      */
     protected function _validateConfig(&$value, $key)
     {
-        if (in_array($key, ['className', 'service', 'mapper'], true) && !class_exists($value)) {
+        if (in_array($key, ['className', 'service', 'mapper'], true) && !is_object($value) && !class_exists($value)) {
             throw new InvalidProviderException([$value]);
         } elseif (!is_array($value) && in_array($key, ['options', 'collaborators'])) {
             throw new InvalidSettingsException([$key]);

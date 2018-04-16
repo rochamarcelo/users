@@ -101,7 +101,6 @@ class SocialAuthMiddleware
     protected function authenticate(ServerRequest $request)
     {
         $user = $this->getUser($request);
-
         if (!$user) {
             return false;
         }
@@ -164,6 +163,7 @@ class SocialAuthMiddleware
 
         $alias = $request->getAttribute('params')['provider'] ?? null;
         $config = (new ProviderConfig())->getConfig($alias);
+
         if (!$alias || !$config) {
             throw new NotFoundException('Not found provider');
         }
