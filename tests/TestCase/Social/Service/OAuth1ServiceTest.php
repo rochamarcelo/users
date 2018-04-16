@@ -18,6 +18,7 @@ use Cake\Http\ServerRequestFactory;
 use Cake\Network\Session;
 use Cake\TestSuite\TestCase;
 use CakeDC\Users\Social\Service\OAuth1Service;
+use CakeDC\Users\Social\Service\ServiceInterface;
 use League\OAuth1\Client\Credentials\TemporaryCredentials;
 use League\OAuth1\Client\Credentials\TokenCredentials;
 use League\OAuth1\Client\Server\User;
@@ -94,6 +95,37 @@ class OAuth1ServiceTest extends TestCase
         parent::tearDown();
 
         unset($this->Provider, $this->Service, $this->Request);
+    }
+
+    /**
+     * Test construct
+     *
+     * @return void
+     */
+    public function testConstruct()
+    {
+
+        $service = new OAuth1Service([
+            'className' => 'League\OAuth1\Client\Server\Twitter',
+            'mapper' => 'CakeDC\Users\Auth\Social\Mapper\Twitter',
+            'options' => [
+                'redirectUri' => '/auth/twitter',
+                'linkSocialUri' => '/link-social/twitter',
+                'callbackLinkSocialUri' => '/callback-link-social/twitter',
+                'clientId' => '20003030300303',
+                'clientSecret' => 'weakpassword'
+            ],
+            'collaborators' => [],
+            'signature' => null,
+            'mapFields' => [],
+            'path' => [
+                'plugin' => 'CakeDC/Users',
+                'controller' => 'Users',
+                'action' => 'socialLogin',
+                'prefix' => null
+            ]
+        ]);
+        $this->assertInstanceOf(ServiceInterface::class, $service);
     }
 
     /**

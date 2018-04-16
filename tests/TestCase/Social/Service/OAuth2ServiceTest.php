@@ -14,6 +14,7 @@ use Cake\Http\ServerRequestFactory;
 use Cake\Network\Exception\BadRequestException;
 use Cake\Network\Session;
 use CakeDC\Users\Social\Service\OAuth2Service;
+use CakeDC\Users\Social\Service\ServiceInterface;
 use League\OAuth2\Client\Provider\FacebookUser;
 use Zend\Diactoros\Uri;
 
@@ -93,6 +94,39 @@ class OAuth2ServiceTest extends \PHPUnit_Framework_TestCase
         parent::tearDown();
 
         unset($this->Provider, $this->Service, $this->Request);
+    }
+
+    /**
+     * Test construct
+     *
+     * @return void
+     */
+    public function testConstruct()
+    {
+
+        $service = new OAuth2Service([
+            'className' => 'League\OAuth2\Client\Provider\Facebook',
+            'mapper' => 'CakeDC\Users\Auth\Social\Mapper\Facebook',
+            'options' => [
+                'customOption' => 'hello',
+                'graphApiVersion' => 'v2.8',
+                'redirectUri' => '/auth/facebook',
+                'linkSocialUri' => '/link-social/facebook',
+                'callbackLinkSocialUri' => '/callback-link-social/facebook',
+                'clientId' => '10003030300303',
+                'clientSecret' => 'secretpassword'
+            ],
+            'collaborators' => [],
+            'signature' => null,
+            'mapFields' => [],
+            'path' => [
+                'plugin' => 'CakeDC/Users',
+                'controller' => 'Users',
+                'action' => 'socialLogin',
+                'prefix' => null
+            ]
+        ]);
+        $this->assertInstanceOf(ServiceInterface::class, $service);
     }
 
     /**
