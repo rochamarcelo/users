@@ -111,8 +111,8 @@ class OAuth2Service implements ServiceInterface
      */
     protected function setProvider($config)
     {
-        if (is_object($config) && $config instanceof AbstractProvider) {
-            $this->provider = $config;
+        if (is_object($config['className']) && $config['className'] instanceof AbstractProvider) {
+            $this->provider = $config['className'];
         } else {
             $class = $config['className'];
 

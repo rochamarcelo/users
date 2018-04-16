@@ -26,7 +26,7 @@ use Zend\Diactoros\Uri;
 class OAuth1ServiceTest extends TestCase
 {
     /**
-     * @var \CakeDC\Users\Social\Service\OAuth1Servic
+     * @var \CakeDC\Users\Social\Service\OAuth1Service
      */
     public $Service;
 
