@@ -247,4 +247,81 @@ class SocialAuthMiddlewareTest extends TestCase
         $this->assertInstanceOf(User::class, $this->Request->getSession()->read('Auth'));
         $this->assertEquals(200, $result['response']->getStatusCode());
     }
+
+    /**
+     * Test when has error getting user
+     *
+     * @return void
+     */
+    public function testErrorGetUser()
+    {
+        $uri = new Uri('/auth/facebook');
+        $this->Request = $this->Request->withUri($uri);
+        $this->Request = $this->Request->withQueryParams([
+            'code' => 'ZPO9972j3092304230',
+            'state' => '__TEST_STATE__'
+        ]);
+        $this->Request = $this->Request->addParams([
+            'plugin' => 'CakeDC/Users',
+            'controller' => 'Users',
+            'action' => 'socialLogin',
+            'provider' => 'facebook'
+        ]);
+        $this->Request->getSession()->write('oauth2state','__TEST_STATE__');
+
+        $Token = new \League\OAuth2\Client\Token\AccessToken([
+            'access_token' => 'test-token',
+            'expires' => 1490988496
+        ]);
+
+        $this->Provider->expects($this->never())
+            ->method('getAuthorizationUrl');
+
+        $this->Provider->expects($this->never())
+            ->method('getState');
+
+        $this->Provider->expects($this->any())
+            ->method('getAccessToken')
+            ->with(
+                $this->equalTo('authorization_code'),
+                $this->equalTo(['code' => 'ZPO9972j3092304230'])
+            )
+            ->will($this->returnValue($Token));
+
+        $this->Provider->expects($this->any())
+            ->method('getResourceOwner')
+            ->will($this->throwException(new \Exception('Test error')));
+
+        $Middleware = new SocialAuthMiddleware();
+
+        $response = new Response();
+        $next = function ($request, $response) {
+            return compact('request', 'response');
+        };
+
+        $result = $Middleware($this->Request, $response, $next);
+        $this->assertEquals(0, $result['request']->getAttribute('socialAuthStatus'));
+        $this->assertEmpty($result['request']->getAttribute('socialRawData'));
+        $this->assertEmpty($this->Request->getSession()->read('Auth'));
+        $this->assertEquals(200, $result['response']->getStatusCode());
+    }
+
+    /**
+     * Test when action is not valid for social login
+     *
+     * @return void
+     */
+    public function testNotValidAction()
+    {
+        $Middleware = new SocialAuthMiddleware();
+        $response = new Response();
+        $next = function ($request, $response) {
+            return compact('request', 'response');
+        };
+
+        $result = $Middleware($this->Request, $response, $next);
+        $this->assertTrue(is_array($result));
+
+        $this->assertEquals(200, $result['response']->getStatusCode());
+    }
 }

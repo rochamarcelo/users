@@ -82,6 +82,9 @@ class SocialAuthMiddleware
                 $this->getConfig('sessionAuthKey'),
                 $result
             );
+
+            $request->getSession()->delete(Configure::read('Users.Key.Session.social'));
+            $request->getSession()->write('Users.successSocialLogin', true);
         }
 
         $request = $request->withAttribute('socialAuthStatus', $this->authStatus);
@@ -106,16 +109,8 @@ class SocialAuthMiddleware
         }
 
         $this->rawData = $user;
-        if (!$result = $this->_touch($user)) {
-            return false;
-        }
 
-        if ($request->getSession()->check(Configure::read('Users.Key.Session.social'))) {
-            $request->getSession()->delete(Configure::read('Users.Key.Session.social'));
-        }
-        $request->getSession()->write('Users.successSocialLogin', true);
-
-        return $result;
+        return $this->_touch($user);
     }
 
     /**
@@ -130,12 +125,7 @@ class SocialAuthMiddleware
         try {
             $rawData = $this->service($request)->getUser($request);
 
-            try {
-                return $this->_mapUser($rawData);
-            } catch (MissingProviderException $ex) {
-                $request->getSession()->delete(Configure::read('Users.Key.Session.social'));
-                throw $ex;
-            }
+            return $this->_mapUser($rawData);
         } catch (\Exception $e) {
             $message = sprintf(
                 "Error getting an access token / retrieving the authorized user's profile data. Error message: %s %s",
