@@ -30,4 +30,29 @@ interface ServiceInterface
      */
     public function getUser(ServerRequest $request): array;
 
+    /**
+     * Get the provider name
+     *
+     * @return string
+     */
+    public function getProviderName(): string;
+
+    /**
+     * Set the provider name
+     *
+     * @param string $name set name
+     *
+     * @return self
+     */
+    public function setProviderName(string $name);
+
+    /**
+     * Get current config
+     *
+     * @param string|null $key The key to get or null for the whole config.
+     * @param mixed $default The return value when the key does not exist.
+     * @return mixed Config value being read.
+     */
+    public function getConfig($key = null, $default = null);
+
 }

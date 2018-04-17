@@ -2,18 +2,12 @@
 
 namespace CakeDC\Users\Social\Service;
 
-use Cake\Core\InstanceConfigTrait;
 use Cake\Http\ServerRequest;
 use Cake\Network\Exception\BadRequestException;
 use League\OAuth2\Client\Provider\AbstractProvider;
 
-class OAuth2Service implements ServiceInterface
+class OAuth2Service extends OAuthServiceAbstract
 {
-
-    use InstanceConfigTrait;
-
-    protected $_defaultConfig = [];
-
     /**
      * @var \League\Oauth2\Client\Provider\GenericProvider
      */

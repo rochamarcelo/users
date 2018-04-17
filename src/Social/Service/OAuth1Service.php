@@ -2,17 +2,11 @@
 
 namespace CakeDC\Users\Social\Service;
 
-
-use Cake\Core\InstanceConfigTrait;
 use Cake\Http\ServerRequest;
 use League\OAuth1\Client\Server\Server;
 
-class OAuth1Service implements ServiceInterface
+class OAuth1Service extends OAuthServiceAbstract
 {
-    use InstanceConfigTrait;
-
-    protected $_defaultConfig = [];
-
     /**
      * @var \League\OAuth1\Client\Server\Server
      */

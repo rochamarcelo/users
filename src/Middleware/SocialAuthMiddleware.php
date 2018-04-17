@@ -3,10 +3,8 @@
 namespace CakeDC\Users\Middleware;
 
 use Cake\Core\InstanceConfigTrait;
-use Cake\Network\Exception\NotFoundException;
 use CakeDC\Users\Exception\AccountNotActiveException;
 use CakeDC\Users\Exception\MissingEmailException;
-use CakeDC\Users\Exception\MissingProviderException;
 use CakeDC\Users\Exception\UserNotActiveException;
 use CakeDC\Users\Listener\AuthListener;
 use Cake\Core\Configure;
@@ -14,7 +12,7 @@ use Cake\Event\EventDispatcherTrait;
 use Cake\Http\ServerRequest;
 use Cake\Log\LogTrait;
 use CakeDC\Users\Social\Locator\DatabaseLocator;
-use CakeDC\Users\Social\ProviderConfig;
+use CakeDC\Users\Social\Service\ServiceFactory;
 use Psr\Http\Message\ResponseInterface;
 
 class SocialAuthMiddleware
@@ -33,8 +31,7 @@ class SocialAuthMiddleware
     protected $_defaultConfig = [];
     protected $authStatus = 0;
     protected $rawData = [];
-    protected $providerConfig = [];
-    protected $providerName;
+
     /**
      * @var \CakeDC\Users\Social\Service\ServiceInterface
      */
@@ -57,9 +54,9 @@ class SocialAuthMiddleware
 
         $this->setConfig(Configure::read('SocialAuthMiddleware'));
 
-        $service = $this->service($request);
-        if (!$service->isGetUserStep($request)) {
-            return $response->withLocation($service->getAuthorizationUrl($request));
+        $this->service = (new ServiceFactory())->createFromRequest($request);
+        if (!$this->service->isGetUserStep($request)) {
+            return $response->withLocation($this->service->getAuthorizationUrl($request));
         }
 
         return $this->finishWithResult($this->authenticate($request), $request, $response, $next);
@@ -123,7 +120,7 @@ class SocialAuthMiddleware
     protected function getUser(ServerRequest $request)
     {
         try {
-            $rawData = $this->service($request)->getUser($request);
+            $rawData = $this->service->getUser($request);
 
             return $this->_mapUser($rawData);
         } catch (\Exception $e) {
@@ -136,32 +133,6 @@ class SocialAuthMiddleware
 
             return false;
         }
-    }
-
-
-    /**
-     * Returns the `$requested service.
-     *
-     * @param \Cake\Http\ServerRequest $request Current HTTP request.
-     * @return \CakeDC\Users\Social\Service\ServiceInterface|false
-     */
-    protected function service(ServerRequest $request)
-    {
-        if ($this->service !== null) {
-            return $this->service;
-        }
-
-        $alias = $request->getAttribute('params')['provider'] ?? null;
-        $config = (new ProviderConfig())->getConfig($alias);
-
-        if (!$alias || !$config) {
-            throw new NotFoundException('Not found provider');
-        }
-        $this->providerName = $alias;
-        $this->providerConfig = $config;
-        $this->service = new $config['service']($config);
-
-        return $this->service;
     }
 
     /**
@@ -204,12 +175,11 @@ class SocialAuthMiddleware
      */
     protected function _mapUser($data)
     {
-        $providerMapperClass = $this->providerConfig['mapper'];
+        $providerMapperClass = $this->service->getConfig('mapper');
         $providerMapper = new $providerMapperClass($data);
         $user = $providerMapper();
-        $user['provider'] = $this->providerName;
+        $user['provider'] = $this->service->getProviderName();
 
         return $user;
     }
-
 }
