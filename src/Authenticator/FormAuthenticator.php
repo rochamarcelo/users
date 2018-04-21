@@ -104,7 +104,7 @@ class FormAuthenticator implements AuthenticatorInterface, AuthenticatorFeedback
     public function authenticate(ServerRequestInterface $request, ResponseInterface $response)
     {
         $result = $this->getBaseAuthenticator()->authenticate($request, $response);
-        if (!Configure::read('Users.reCaptcha.login') || !$result->isValid()) {
+        if (!Configure::read('Users.reCaptcha.login') || in_array($result->getStatus(), [Result::FAILURE_OTHER, Result::FAILURE_CREDENTIALS_MISSING])) {
             return $this->lastResult = $result;
         }
 
