@@ -17,31 +17,6 @@ class AuthListener implements EventListenerInterface
      */
     public function implementedEvents()
     {
-        return [
-            'Authentication.afterIdentify' => 'afterIdentify',
-            'Authentication.logout' => 'afterLogout'
-        ];
+        return [];
     }
-
-    /**
-     * execute when Authentication.afterIdentify is dispatched
-     *
-     * @param Event $event
-     */
-    public function afterIdentity(Event $event)
-    {
-
-    }
-
-    /**
-     * execute when Authentication.logout is dispatched
-     *
-     * @param Event $event
-     */
-    public function afterLogout(Event $event)
-    {
-
-    }
-
-
 }
