@@ -89,7 +89,6 @@ class SocialAuthMiddlewareTest extends TestCase
         ];
         Configure::write('OAuth.providers.facebook', $config);
 
-
         $this->Request = ServerRequestFactory::fromGlobals();
     }
 
@@ -177,7 +176,6 @@ class SocialAuthMiddlewareTest extends TestCase
             'access_token' => 'test-token',
             'expires' => 1490988496
         ]);
-
 
         $user = new FacebookUser([
             'id' => '1',
