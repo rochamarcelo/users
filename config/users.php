@@ -130,14 +130,15 @@ $config = [
         'AuthenticationComponent' => [
             'loginAction' => '/login',
             'logoutRedirect' => '/login',
-            'loginRedirect' => '/'
+            'loginRedirect' => '/',
+            'requireIdentity' => false
         ],
         'Authenticators' => [
             'Authentication.Session' => [
                 'skipGoogleVerify' => true,
                 'sessionKey' => 'Auth',
             ],
-            'Authentication.Form' => [
+            'CakeDC/Users.Form' => [
                 'loginUrl' => '/login'
             ],
             'Authentication.Token' => [

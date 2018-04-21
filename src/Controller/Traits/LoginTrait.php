@@ -11,6 +11,10 @@
 
 namespace CakeDC\Users\Controller\Traits;
 
+use Authentication\AuthenticationService;
+use Authentication\Authenticator\Result;
+use CakeDC\Users\Authenticator\AuthenticatorFeedbackInterface;
+use CakeDC\Users\Authenticator\FormAuthenticator;
 use CakeDC\Users\Controller\Component\UsersAuthComponent;
 use CakeDC\Users\Exception\AccountNotActiveException;
 use CakeDC\Users\Exception\MissingEmailException;
@@ -117,27 +121,56 @@ trait LoginTrait
             return $this->redirect($this->Authentication->getConfig('loginRedirect'));
         }
 
-        if ($this->request->is('post')) {
+        $service = $this->request->getAttribute('authentication');
+        $message = $this->_getLoginErrorMessage($service);
+
+        if (empty($message) && $this->request->is('post')) {
             $message = __d('CakeDC/Users', 'Username or password is incorrect');
+        }
+
+        if (!empty($message)) {
             $this->Flash->error($message, 'default', [], 'auth');
         }
     }
 
     /**
-     * Check reCaptcha if enabled for login
+     * Get the list of login error message map by status
      *
-     * @return bool
+     * @return array
      */
-    protected function _checkReCaptcha()
+    protected function _getLoginErrorMessageMap()
     {
-        if (!Configure::read('Users.reCaptcha.login')) {
-            return true;
+        return [
+            FormAuthenticator::FAILURE_INVALID_RECAPTCHA => __d('CakeDC/Users', 'Invalid reCaptcha'),
+            Result::FAILURE_IDENTITY_NOT_FOUND => __d('CakeDC/Users', 'Username or password is incorrect')
+        ];
+    }
+
+    /**
+     * Show the login error message based on authenticators
+     *
+     * @param AuthenticationService $service authentication service used in request
+     *
+     * @return string
+     */
+    protected function _getLoginErrorMessage(AuthenticationService $service)
+    {
+        $message = '';
+        $errorMessages = $this->_getLoginErrorMessageMap();
+        foreach ($service->authenticators() as $key => $authenticator) {
+            if (!$authenticator instanceof AuthenticatorFeedbackInterface) {
+                continue;
+            }
+
+            $result = $authenticator->getLastResult();
+            $status = $result ? $result->getStatus() : null;
+
+            if ($status && isset($errorMessages[$status])) {
+                $message = $errorMessages[$status];
+            }
         }
 
-        return $this->validateReCaptcha(
-            $this->request->getData('g-recaptcha-response'),
-            $this->request->clientIp()
-        );
+        return $message;
     }
 
     /**
