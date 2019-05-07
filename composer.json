@@ -28,7 +28,7 @@
     },
     "require": {
         "cakephp/cakephp": "^3.7",
-        "cakedc/auth": "^3.0"
+        "cakedc/auth": "dev-develop"
     },
     "require-dev": {
         "phpunit/phpunit": "^5.0",
@@ -40,7 +40,9 @@
         "luchianenco/oauth2-amazon": "^1.1",
         "google/recaptcha": "@stable",
         "robthree/twofactorauth": "~1.6",
-        "yubico/u2flib-server": "^1.0"
+        "yubico/u2flib-server": "^1.0",
+        "cakephp/authorization": "^1.0",
+        "cakephp/authentication": "^1.0"
     },
     "suggest": {
         "league/oauth1-client": "Provides Social Authentication with Twitter",
